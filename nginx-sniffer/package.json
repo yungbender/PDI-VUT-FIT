@@ -1,0 +1,17 @@
+{
+  "name": "nginx-sniffer",
+  "version": "1.0.0",
+  "description": "Sniffer for nginx http requests, which are sent to kafka",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^16.11.7",
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "kafkajs": "^1.15.0"
+  }
+}
