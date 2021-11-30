@@ -1,0 +1,66 @@
+version: "3"
+
+services:
+  pdi-zookeeper:
+    image: docker.io/bitnami/zookeeper:3.7
+    container_name: "pdi-zookeeper"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    expose:
+      - "2181"
+    volumes:
+      - "pdi_zookeeper_data:/bitnami"
+
+  pdi-kafka:
+    image: docker.io/bitnami/kafka:3
+    container_name: "pdi-kafka"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=pdi-zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    expose:
+      - "9092"
+    volumes:
+      - "pdi_kafka_data:/bitnami"
+    depends_on:
+      - pdi-zookeeper
+
+  pdi-nginx:
+    container_name: "pdi-nginx"
+    build:
+      context: "./nginx"
+      dockerfile: "Dockerfile"
+    env_file:
+      - "./nginx/nginx.env"
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    volumes:
+      - pdi_nginx_logs:/nginx-logs:z
+
+  pdi-nginx-sniffer:
+    container_name: "pdi-nginx-sniffer"
+    build: 
+      context: "./nginx-sniffer"
+      dockerfile: "Dockerfile"
+    env_file:
+      - "./nginx-sniffer/nginx_sniffer.env"
+    entrypoint: ["make", "start"]
+    volumes:
+      - pdi_nginx_logs:/nginx-logs:z
+    depends_on:
+      - pdi-zookeeper
+      - pdi-kafka
+      - pdi-nginx
+
+volumes:
+  pdi_zookeeper_data:
+    driver: local
+  pdi_kafka_data:
+    driver: local
+  pdi_nginx_logs:
+    driver: local
