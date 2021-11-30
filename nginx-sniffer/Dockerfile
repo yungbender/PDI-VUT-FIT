@@ -1,11 +1,13 @@
-FROM nginx:1.21.4-alpine
+FROM alpine:3.15
 
-RUN mkdir "/tmp/nginx_logs" && \ 
-    chmod 777 "/tmp/nginx_logs"
-RUN rm /etc/nginx/nginx.conf
+RUN apk add --update nodejs npm make
 
-RUN apk add --update nodejs npm
+COPY "./Makefile" "/pdi/"
+COPY "./*.json" "/pdi/"
+COPY "./src/*.ts" "/pdi/src/"
 
-COPY "./src/nginx/nginx.conf" "/etc/nginx/nginx.conf"
+WORKDIR /pdi
 
-EXPOSE 8000
+RUN make install 
+RUN make compile
+

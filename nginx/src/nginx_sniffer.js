@@ -1,6 +1,6 @@
 var fs = require("fs");
 
-var log_path = "/tmp/nginx_logs";
+var log_path = process.env.LOGS_FOLDER;
 
 function sniff(req) {
     let res = {
