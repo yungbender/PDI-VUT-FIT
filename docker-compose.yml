@@ -19,6 +19,8 @@ services:
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=pdi-zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+    env_file:
+      - ./kafka/kafka.env
     ports:
       - "9092:9092"
     expose:
@@ -48,7 +50,9 @@ services:
       context: "./nginx-sniffer"
       dockerfile: "Dockerfile"
     env_file:
-      - "./nginx-sniffer/nginx_sniffer.env"
+      - "./nginx/nginx.env"
+      - "./kafka/kafka.env"
+      - "./nginx-sniffer/nginx-sniffer.env"
     entrypoint: ["make", "start"]
     volumes:
       - pdi_nginx_logs:/nginx-logs:z
@@ -56,6 +60,37 @@ services:
       - pdi-zookeeper
       - pdi-kafka
       - pdi-nginx
+
+  pdi-spark-master:
+    container_name: "pdi-spark-master"
+    build:
+      context: "./spark"
+      dockerfile: "Dockerfile"
+    env_file:
+      - ./kafka/kafka.env
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./spark:/spark"
+
+  pdi-spark-worker:
+    image: docker.io/bitnami/spark:3
+    container_name: "pdi-spark-worker"
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://pdi-spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
 
 volumes:
   pdi_zookeeper_data:
