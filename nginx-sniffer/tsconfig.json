@@ -104,6 +104,6 @@
     "src/*.ts"
   ],
   "exclude": [
-    "src/nginx"
+    "../nginx/nginx"
   ]
 }

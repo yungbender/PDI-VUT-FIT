@@ -34,8 +34,6 @@ const waitOnProducer = async () => {
 };
 
 const uploadMissing = async() => {
-    await waitOnProducer();
-
     let files = await afs.readdir(logsLocation!);
     console.log(`Processing missing files: ${files.length}`);
     for(let file of files) {
@@ -57,7 +55,7 @@ const fileCallback = async (eventType: string, filename: string) => {
     console.log(`Sending ${filename} content to kafka`);
 
     await producer.send({
-        topic: "stark-ingress",
+        topic: process.env.KAFKA_INGRESS_TOPIC!,
         messages: [
             {value: file}
         ],
