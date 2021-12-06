@@ -1,3 +1,4 @@
 nginx-sniffer/build/*
 nginx-sniffer/node_modules
 .venv
+.vscode
