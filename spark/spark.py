@@ -118,9 +118,9 @@ def main():
 
     # set output sink to kafka with topic
     set_output_kafka(out_running, data_types_running)
-    set_output_kafka(out_30m, data_types_30m)
-    set_output_kafka(out_8h, data_types_8h)
-    set_output_kafka(out_24h, data_types_24h)
+    set_output_kafka(out_30m, data_types_30m, interval="30 minute")
+    set_output_kafka(out_8h, data_types_8h, interval="8 hour")
+    set_output_kafka(out_24h, data_types_24h, interval="24 hour")
 
     # start job
     spark.streams.awaitAnyTermination()
