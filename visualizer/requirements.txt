@@ -1,0 +1,2 @@
+kafka-python
+-e git+https://github.com/piccolomo/plotext.git@eb80fe2daff2c8c6ad745ba1ce80fcd3d594caa5#egg=plotext
