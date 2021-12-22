@@ -3,10 +3,11 @@ import time
 from typing import Dict, List
 
 from pyspark import SparkConf
-from pyspark.sql import SparkSession, Window
+from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import from_json, window, col, to_json, struct, lit, avg, split
+from pyspark.sql.functions import from_json, window, to_json, struct, lit, avg, split, udf
 from pyspark.sql.types import IntegerType, StructType, StructField, StringType, ArrayType
+from user_agents import parse
 
 
 INGRESS_MSG_SCHEMA = StructType([
@@ -40,6 +41,7 @@ def get_counts(msg: DataFrame, countable_cols: List[str], interval=None) -> List
             res.append(msg.groupBy(col_name).count())
     return res
 
+
 def get_averages(msg: DataFrame, averagable_cols: List[str], interval=None) -> List[DataFrame]:
     res = []
     for col_name in averagable_cols:
@@ -52,6 +54,7 @@ def get_averages(msg: DataFrame, averagable_cols: List[str], interval=None) -> L
         # replace null value if there is no record in stream
         res.append(msg.fillna({"average": 0}))
     return res
+
 
 def set_output_kafka(msgs: List[DataFrame], checkpoints: List[str], interval=None):
     for msg, cp in zip(msgs, checkpoints):
@@ -66,12 +69,14 @@ def set_output_kafka(msgs: List[DataFrame], checkpoints: List[str], interval=Non
             out = out.outputMode("complete")
         out.start()
 
+
 def format_output(msgs: List[DataFrame], data_types: List[str], interval=None):
     res = []
     for msg, data_type in zip(msgs, data_types):
         res.append((msg.withColumn("data_type", lit(data_type))
                        .select(to_json(struct("*")).alias("value"))))
     return res
+
 
 def build_job():
     config = SparkConf()
@@ -86,6 +91,18 @@ def build_job():
     ])
 
     return SparkSession.builder.config(conf=config).getOrCreate()
+
+
+def parse_browser(ua_str: str):
+    if ua_str is None or ua_str == "Not Defined":
+        return ua_str
+
+    try:
+        ua = parse(ua_str)
+    except Exception as exc:
+        return "Not Defined"
+    return ua.browser.family
+
 
 def main():
     # this columns are counter from input kafka msg
@@ -103,12 +120,16 @@ def main():
     spark = SparkSession.builder.appName("nginx-aggregations").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
+    # create custom SQL function to parse browser from user-agent string
+    browser = udf(lambda x: parse_browser(x), StringType())
+
     # set kafka input
     input = spark.readStream.format("kafka").option("kafka.bootstrap.servers", f"{KAFKA_BROKER_HOST}:{KAFKA_BROKER_PORT}").option("subscribe", KAFKA_INGRESS_TOPIC).load()
 
     # parse msg from kafka to json
     msg_raw = input.selectExpr("CAST(value AS STRING)", "timestamp")
     msg = msg_raw.select(from_json("value", INGRESS_MSG_SCHEMA).alias("data"), "timestamp").select("data.*", "timestamp")
+
 
     # fillout null values if nginx cannot specify them
     msg = msg.fillna({"httpVersion": "Not Defined",
@@ -117,7 +138,8 @@ def main():
                       "contentLength": 0,
                       "contentType": "Not Defined"})
 
-    msg = msg.withColumn("userAgent", split(msg["userAgent"], "[/]")[0])
+    # parse user-agent
+    msg = msg.withColumn("userAgent", browser("userAgent"))
 
     # create count queries, for countable columns
     cnts_running = get_counts(msg, countable_cols)
