@@ -7,6 +7,8 @@ function sniff(req) {
         httpVersion: req.httpVersion,
         userAgent: req.headersIn["User-Agent"],
         sourceIp: req.remoteAddress,
+        contentType: req.headersIn["Content-Type"],
+        contentLength: parseInt(req.headersIn["Content-Length"]),
     };
 
     fs.writeFileSync(`${log_path}/${req.variables["request_id"]}`, JSON.stringify(res));
