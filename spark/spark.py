@@ -1,15 +1,19 @@
+"""
+Spark job for aggregating nginx stats.
+
+Authors: Tomas Sasak (xsasak01), Jakub Frejlach (xfrejl00)
+"""
 import os
-import time
-from typing import Dict, List
+from typing import List
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import from_json, window, to_json, struct, lit, avg, split, udf
-from pyspark.sql.types import IntegerType, StructType, StructField, StringType, ArrayType
+from pyspark.sql.functions import from_json, window, to_json, struct, lit, avg, udf
+from pyspark.sql.types import IntegerType, StructType, StructField, StringType 
 from user_agents import parse
 
-
+# Schema of kafka json input message (spark-ingress)
 INGRESS_MSG_SCHEMA = StructType([
     StructField("httpVersion", StringType(), False),
     StructField("userAgent", StringType(), True),
@@ -18,10 +22,7 @@ INGRESS_MSG_SCHEMA = StructType([
     StructField("contentType", StringType(), False),
 ])
 
-EGRESS_MSG_SCHEMA = StructType([
-    StructField("userAgentCounts", ArrayType(StringType()), False)
-])
-
+# Get kafka and spark attributes
 KAFKA_BROKER_HOST = os.getenv("KAFKA_BROKER")
 KAFKA_BROKER_PORT = os.getenv("KAFKA_BROKER_PORT")
 KAFKA_INGRESS_TOPIC = os.getenv("KAFKA_INGRESS_TOPIC")
@@ -31,6 +32,9 @@ SPARK_MASTER_PORT = os.getenv("SPARK_MASTER_PORT")
 
 
 def get_counts(msg: DataFrame, countable_cols: List[str], interval=None) -> List[DataFrame]:
+    """
+    Calculates counts from given columns in optional window interval.
+    """
     res = []
     for col_name in countable_cols:
         if interval:
@@ -43,6 +47,9 @@ def get_counts(msg: DataFrame, countable_cols: List[str], interval=None) -> List
 
 
 def get_averages(msg: DataFrame, averagable_cols: List[str], interval=None) -> List[DataFrame]:
+    """
+    Calculates average from given columns in optional window interval.
+    """
     res = []
     for col_name in averagable_cols:
         if interval:
@@ -57,6 +64,9 @@ def get_averages(msg: DataFrame, averagable_cols: List[str], interval=None) -> L
 
 
 def set_output_kafka(msgs: List[DataFrame], checkpoints: List[str], interval=None):
+    """
+    Sets kafka output sink with topics.
+    """
     for msg, cp in zip(msgs, checkpoints):
         out = (msg.writeStream
                   .format("kafka")
@@ -71,6 +81,9 @@ def set_output_kafka(msgs: List[DataFrame], checkpoints: List[str], interval=Non
 
 
 def format_output(msgs: List[DataFrame], data_types: List[str], interval=None):
+    """
+    Formats output for kafka with given data types for UI.
+    """
     res = []
     for msg, data_type in zip(msgs, data_types):
         res.append((msg.withColumn("data_type", lit(data_type))
@@ -79,6 +92,9 @@ def format_output(msgs: List[DataFrame], data_types: List[str], interval=None):
 
 
 def build_job():
+    """
+    Builds job with connection to the master spark node.
+    """
     config = SparkConf()
     config.setAll([
         ("spark.master", f"spark://{SPARK_MASTER_HOST}:{SPARK_MASTER_PORT}"),
@@ -94,6 +110,9 @@ def build_job():
 
 
 def parse_browser(ua_str: str):
+    """
+    Parses browser type from user-agent string.
+    """
     if ua_str is None or ua_str == "Not Defined":
         return ua_str
 

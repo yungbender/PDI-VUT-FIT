@@ -1,17 +1,33 @@
+/**
+ * Nginx sniffer.
+ * 
+ * Authors: Tomas Sasak (xsasak01), Jakub Frejlach (xfrejl00)
+ */
 import { Kafka, Producer } from 'kafkajs';
 import { promises as afs } from 'fs';
 import * as fs from 'fs';
-import { create } from 'domain';
 
+/**
+ * Nginx njs request logs folder.
+ */
 const logsLocation = process.env.LOGS_FOLDER;
 
+/**
+ * Global kafka object.
+ */
 const kafka = new Kafka({
     clientId: `${process.env.KAFKA_CLIENT_ID}`,
     brokers: [`${process.env.KAFKA_BROKER}:${process.env.KAFKA_BROKER_PORT}`]
 });
 
+/**
+ * Global kafka producer object.
+ */
 let producer: Producer;
 
+/**
+ * Creates kafka producer and connects to broker.
+ */
 const createProducer = async () => {
     while(true) {
         let producer = kafka.producer();
@@ -25,6 +41,9 @@ const createProducer = async () => {
     }
 };
 
+/**
+ * Loops until it gets connected to kafka.
+ */
 const waitOnProducer = async () => {
     while(true) {
         if(producer !== undefined)
@@ -33,6 +52,9 @@ const waitOnProducer = async () => {
     }
 };
 
+/**
+ * Uploads missed log files in log folder to kafka.
+ */
 const uploadMissing = async() => {
     let files = await afs.readdir(logsLocation!);
     console.log(`Processing missing files: ${files.length}`);
@@ -41,6 +63,10 @@ const uploadMissing = async() => {
     }
 };
 
+/**
+ * Callback when file changes in folder.
+ * Uploads each file log to kafka and deletes it afterwards.
+ */
 const fileCallback = async (eventType: string, filename: string) => {
     await waitOnProducer();
 
@@ -65,6 +91,11 @@ const fileCallback = async (eventType: string, filename: string) => {
     await afs.unlink(filePath);
 };
 
+/**
+ * Sniffer watches set logs folder, where nginx exports
+ * through NJS logs with our needed attributes for each requests.
+ * Each log is sent to the kafka to be processed by spark.
+ */
 const main = () => {
     console.log(`Starting nginx logs exporter.`);
     createProducer().then((res) => producer = res);
@@ -74,7 +105,9 @@ const main = () => {
         console.error("Logs location path not defined, aborting");
         return;
     }
+    // upload logs which got missed and are in logs folder
     uploadMissing().then();
+    // start watching folder
     fs.watch(logsLocation, {
         persistent: true,
         recursive: false,

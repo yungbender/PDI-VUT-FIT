@@ -1,3 +1,8 @@
+"""
+Bootstrap script for starting whole app.
+
+Authors: Tomas Sasak (xsasak01), Jakub Frejlach (xfrejl00)
+"""
 import os
 import subprocess
 import requests
@@ -5,6 +10,7 @@ from time import sleep
 
 from kafka import KafkaConsumer
 
+# Kafka and spark attributes for connection
 KAFKA_BROKER_HOST = os.getenv("KAFKA_BROKER")
 KAFKA_BROKER_PORT = os.getenv("KAFKA_BROKER_PORT")
 SPARK_MASTER_HOST = os.getenv("SPARK_MASTER_HOST")
@@ -13,6 +19,12 @@ SPARK_MASTER_STATUS_PORT = os.getenv("SPARK_MASTER_STATUS_PORT")
 
 
 def main():
+    """
+    Script waits until kafka is running.
+    If it is running, checks if spark master and worker nodes are running.
+    If everything is ready, submits the job.
+    If job crashes it is always restarted.
+    """
     # check if kafka is running
     print("Checking if kafka is running...")
     while True:
