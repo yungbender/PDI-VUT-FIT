@@ -9,7 +9,7 @@ from typing import Dict, List, Iterator
 from kafka import KafkaConsumer
 import plotext as plt
 
-KAFKA_EGRESS_TOPIC = os.getenv("KAFKA_EGRESS_TOPIC")
+KAFKA_EGRESS_TOPIC = os.getenv("KAFKA_EGRESS_TOPIC", "spark-egress")
 
 DATA_TYPES = [
     "sourceIp-count",
