@@ -16,6 +16,7 @@ services:
   pdi-kafka:
     image: docker.io/bitnami/kafka:3
     container_name: "pdi-kafka"
+    restart: on-failure
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=pdi-zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
@@ -83,23 +84,35 @@ services:
       - SPARK_SSL_ENABLED=no
     ports:
       - "8080:8080"
-    volumes:
-      - "./spark:/spark"
 
   pdi-spark-worker:
-    image: docker.io/bitnami/spark:3
     container_name: "pdi-spark-worker"
+    build:
+      context: "./spark"
+      dockerfile: "Dockerfile"
     env_file:
       - ./kafka/kafka.env
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://pdi-spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=4
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
+
+  pdi-bootstrapper:
+    container_name: "pdi-bootstrapper"
+    build:
+      context: "."
+      dockerfile: "./bootstrapper/Dockerfile"
+    env_file:
+      - "./spark/spark.env"
+      - "./kafka/kafka.env"
+    environment:
+      - PYTHONUNBUFFERED=1
+    entrypoint: ["python3", "-u", "bootstrapper.py"]
 
 
 volumes:

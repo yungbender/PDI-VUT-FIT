@@ -2,9 +2,10 @@ import os
 import time
 from typing import Dict, List
 
+from pyspark import SparkConf
 from pyspark.sql import SparkSession, Window
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.functions import from_json, window, col, to_json, struct, lit, avg
+from pyspark.sql.functions import from_json, window, col, to_json, struct, lit, avg, split
 from pyspark.sql.types import IntegerType, StructType, StructField, StringType, ArrayType
 
 
@@ -24,6 +25,9 @@ KAFKA_BROKER_HOST = os.getenv("KAFKA_BROKER")
 KAFKA_BROKER_PORT = os.getenv("KAFKA_BROKER_PORT")
 KAFKA_INGRESS_TOPIC = os.getenv("KAFKA_INGRESS_TOPIC")
 KAFKA_EGRESS_TOPIC = os.getenv("KAFKA_EGRESS_TOPIC")
+SPARK_MASTER_HOST = os.getenv("SPARK_MASTER_HOST")
+SPARK_MASTER_PORT = os.getenv("SPARK_MASTER_PORT")
+
 
 def get_counts(msg: DataFrame, countable_cols: List[str], interval=None) -> List[DataFrame]:
     res = []
@@ -69,6 +73,20 @@ def format_output(msgs: List[DataFrame], data_types: List[str], interval=None):
                        .select(to_json(struct("*")).alias("value"))))
     return res
 
+def build_job():
+    config = SparkConf()
+    config.setAll([
+        ("spark.master", f"spark://{SPARK_MASTER_HOST}:{SPARK_MASTER_PORT}"),
+        ("spark.driver.host", "pdi-bootstrapper"),
+        ("spark.submit.deployMode", "cluster"),
+        ("spark.driver.bindAddress", "0.0.0.0"),
+        ("spark.app.name", "nginx-aggregations"),
+        ("spark.yarn.submit.waitAppCompletion", "false"),
+        ("spark.executor.memory", "2GB"),
+    ])
+
+    return SparkSession.builder.config(conf=config).getOrCreate()
+
 def main():
     # this columns are counter from input kafka msg
     countable_cols = ["userAgent", "httpVersion", "sourceIp", "contentType"]
@@ -81,6 +99,7 @@ def main():
     data_types_running = [f"{col_}-count-window-running" for col_ in countable_cols] + [f"{col_}-average-window-running" for col_ in averageable_cols]
 
     # create spark job
+    spark = build_job()
     spark = SparkSession.builder.appName("nginx-aggregations").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
@@ -97,6 +116,8 @@ def main():
                       "sourceIp": "Not Defined",
                       "contentLength": 0,
                       "contentType": "Not Defined"})
+
+    msg = msg.withColumn("userAgent", split(msg["userAgent"], "[/]")[0])
 
     # create count queries, for countable columns
     cnts_running = get_counts(msg, countable_cols)
