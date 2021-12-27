@@ -129,9 +129,9 @@ def main():
     averageable_cols = ["contentLength"]
 
     # this are output data types, this will ui get
-    data_types_30m = [f"{col_}-count-window-30m" for col_ in countable_cols] + [f"{col_}-average-window-30m" for col_ in countable_cols]
-    data_types_8h = [f"{col_}-count-window-8h" for col_ in countable_cols] + [f"{col_}-average-window-8h" for col_ in countable_cols]
-    data_types_24h = [f"{col_}-count-window-24h" for col_ in countable_cols] + [f"{col_}-average-window-24h" for col_ in countable_cols]
+    data_types_30m = [f"{col_}-count-window-30m" for col_ in countable_cols] + [f"{col_}-average-window-30m" for col_ in averageable_cols]
+    data_types_8h = [f"{col_}-count-window-8h" for col_ in countable_cols] + [f"{col_}-average-window-8h" for col_ in averageable_cols]
+    data_types_24h = [f"{col_}-count-window-24h" for col_ in countable_cols] + [f"{col_}-average-window-24h" for col_ in averageable_cols]
     data_types_running = [f"{col_}-count-window-running" for col_ in countable_cols] + [f"{col_}-average-window-running" for col_ in averageable_cols]
 
     # create spark job
