@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+"""
+CLI data visualizer
+
+Authors: Tomas Sasak (xsasak01), Jakub Frejlach (xfrejl00)
+"""
 import os
 import sys
 import json
@@ -54,7 +60,12 @@ PLOT_COLOR_MAP = {"sourceIp": 2, "userAgent": 3, "httpVersion": 4, "contentType"
 
 
 def parse_args() -> Namespace:
-    parser = ArgumentParser(description="CLI PDI")
+    parser = ArgumentParser(
+        description=(
+            "CLI data visualizer. It displayes running window and one additional window "
+            "selected by the argument."
+        )
+    )
 
     parser.add_argument(
         "-t",
@@ -69,6 +80,7 @@ def parse_args() -> Namespace:
 
 
 def init_data(windowed_data_types: List[str]) -> Dict:
+    """Inits the data structure"""
     data = {}
     for data_type in windowed_data_types:
         _, value_name, _ = data_type.split("-", maxsplit=2)
@@ -81,6 +93,7 @@ def init_data(windowed_data_types: List[str]) -> Dict:
 
 
 def get_labels(full_names: List[str]) -> Iterator[str]:
+    """Returns shortened graph label"""
     for name in full_names:
         if len(name) > PLOT_LABEL_CHAR_LIMIT:
             yield f"{name[:PLOT_LABEL_CHAR_LIMIT]}..."
@@ -89,22 +102,25 @@ def get_labels(full_names: List[str]) -> Iterator[str]:
 
 
 def get_title(windowed_data_type: str) -> str:
+    """Returns title for normal graph"""
     data_type, value_name, _, window = windowed_data_type.split("-")
     return f"{data_type} {value_name} {window}"
 
 
-def get_average_title(windowed_data_type: str) -> str:
+def get_average_label(windowed_data_type: str) -> str:
+    """Returns label for averages graph"""
     data_type, _, _, window = windowed_data_type.split("-")
     return f"{data_type} {window}"
 
 
 def get_color(windowed_data_type: str) -> int:
+    """Returns color for graph"""
     data_type, _ = windowed_data_type.split("-", maxsplit=1)
     return PLOT_COLOR_MAP[data_type]
 
 
 def display_data(data: Dict, windowed_data_types: List[str], latest_window: Dict):
-
+    """Displays the data on stdout"""
     # init plot grid
     plt.subplots(PLOT_ROWS, PLOT_COLS)
 
@@ -119,7 +135,6 @@ def display_data(data: Dict, windowed_data_types: List[str], latest_window: Dict
             continue
 
         # handle averages plot
-        # TODO: finish the plot logic
         if "average" in data_type:
 
             averages[data_type] = resources["average"]
@@ -129,7 +144,7 @@ def display_data(data: Dict, windowed_data_types: List[str], latest_window: Dict
 
             plt.bar(
                 [
-                    get_average_title(average_name)
+                    get_average_label(average_name)
                     for average_name in averages
                     if averages[average_name] > 0
                 ],
